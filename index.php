@@ -116,26 +116,39 @@ if (empty($route)) {
 
 // Map frontend routes to their respective files
 $frontendRoutes = [
+    // Core pages
     'template' => 'frontend/template.php',
     'home' => 'frontend/home.php',
+    '404' => 'frontend/404.php',
+    
+    // Product related
     'products' => 'frontend/products.php',
-    'product' => 'frontend/product-detail.php',
+    'product-detail' => 'frontend/product-detail.php',
+    
+    // Service related
     'services' => 'frontend/services.php',
-    'service' => 'frontend/service-detail.php',
+    'service-detail' => 'frontend/service-detail.php',
+    
+    // Cart and checkout
     'cart' => 'frontend/cart.php',
     'checkout' => 'frontend/checkout.php',
+    
+    // User account
     'login' => 'frontend/login.php',
     'register' => 'frontend/register.php',
     'profile' => 'frontend/profile.php',
-    'orders' => 'frontend/orders.php',
+    
+    // Admin section
     'admin' => 'frontend/admin/index.php',
     'admin/products' => 'frontend/admin/products.php',
     'admin/services' => 'frontend/admin/services.php',
     'admin/categories' => 'frontend/admin/categories.php',
     'admin/orders' => 'frontend/admin/orders.php',
     'admin/users' => 'frontend/admin/users.php',
-    'seller' => 'frontend/seller/index.php',
-    'seller/services' => 'frontend/seller/services.php',
+    
+    // Static pages
+    'about' => 'frontend/about.php',
+    'contact' => 'frontend/contact.php'
 ];
 
 // Check if the route exists

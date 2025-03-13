@@ -74,6 +74,12 @@
     </footer>
     
     <script src="/sundarta/assets/js/script.js"></script>
+    <script src="/assets/js/utils/charts.js"></script> <!-- Only needed for admin dashboard -->
+    <script src="/assets/js/utils/validation.js"></script>
+    <script src="/assets/js/utils/ui.js"></script>
+    <script src="/assets/js/utils/price.js"></script>
+    <script src="/assets/js/utils/pagination.js"></script>
+    <script src="/assets/js/utils/filters.js"></script>
     <script>
         // Initialize toggle functionality for search and user dropdown
         document.getElementById('search-toggle').addEventListener('change', function() {

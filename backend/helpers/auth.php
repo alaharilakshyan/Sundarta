@@ -44,6 +44,10 @@ function requireLogin() {
     $_SESSION['logged_in'] = time();
 }
 
+function isAuthenticated() {
+    return isLoggedIn();
+}
+
 function login($user_id, $username, $roles, $permissions = []) {
     if (isLoggedIn()) {
         return false; // Prevent login if already logged in
