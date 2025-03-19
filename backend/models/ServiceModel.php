@@ -70,11 +70,15 @@ class ServiceModel extends BaseModel {
      * @return array Array of services
      */
     public function getByCategory($categoryId) {
-        $sql = "SELECT s.*, COALESCE(AVG(r.rating), 0) AS rating 
+        $sql = "SELECT s.*, COALESCE(r.avg_rating, 0) AS rating 
                 FROM {$this->table} s
-                LEFT JOIN reviews r ON s.id = r.service_id
-                WHERE s.category = ?
-                GROUP BY s.id";
+                LEFT JOIN (
+                    SELECT service_id, AVG(rating) as avg_rating 
+                    FROM reviews 
+                    WHERE service_id IS NOT NULL 
+                    GROUP BY service_id
+                ) r ON s.id = r.service_id
+                WHERE s.category = ?";
         return $this->select($sql, [$categoryId], 'i');
     }
 
@@ -85,11 +89,15 @@ class ServiceModel extends BaseModel {
      * @return array Array of services
      */
     public function getBySeller($userId) {
-        $sql = "SELECT s.*, COALESCE(AVG(r.rating), 0) AS rating 
+        $sql = "SELECT s.*, COALESCE(r.avg_rating, 0) AS rating 
                 FROM {$this->table} s
-                LEFT JOIN reviews r ON s.id = r.service_id
-                WHERE s.user_id = ?
-                GROUP BY s.id";
+                LEFT JOIN (
+                    SELECT service_id, AVG(rating) as avg_rating 
+                    FROM reviews 
+                    WHERE service_id IS NOT NULL 
+                    GROUP BY service_id
+                ) r ON s.id = r.service_id
+                WHERE s.user_id = ?";
         return $this->select($sql, [$userId], 'i');
     }
 
@@ -100,11 +108,15 @@ class ServiceModel extends BaseModel {
      * @return array Array of services
      */
     public function search($query) {
-        $sql = "SELECT s.*, COALESCE(AVG(r.rating), 0) AS rating 
+        $sql = "SELECT s.*, COALESCE(r.avg_rating, 0) AS rating 
                 FROM {$this->table} s
-                LEFT JOIN reviews r ON s.id = r.service_id
-                WHERE s.name LIKE ? OR s.description LIKE ?
-                GROUP BY s.id";
+                LEFT JOIN (
+                    SELECT service_id, AVG(rating) as avg_rating 
+                    FROM reviews 
+                    WHERE service_id IS NOT NULL 
+                    GROUP BY service_id
+                ) r ON s.id = r.service_id
+                WHERE s.name LIKE ? OR s.description LIKE ?";
         $searchTerm = "%{$query}%";
         return $this->select($sql, [$searchTerm, $searchTerm], 'ss');
     }
@@ -116,10 +128,14 @@ class ServiceModel extends BaseModel {
      * @return array Array of services
      */
     public function getFeatured($limit = 6) {
-        $sql = "SELECT s.*, COALESCE(AVG(r.rating), 0) AS rating 
+        $sql = "SELECT s.*, COALESCE(r.avg_rating, 0) AS rating 
                 FROM {$this->table} s
-                LEFT JOIN reviews r ON s.id = r.service_id
-                GROUP BY s.id
+                LEFT JOIN (
+                    SELECT service_id, AVG(rating) as avg_rating 
+                    FROM reviews 
+                    WHERE service_id IS NOT NULL 
+                    GROUP BY service_id
+                ) r ON s.id = r.service_id
                 ORDER BY s.id DESC
                 LIMIT ?";
         return $this->select($sql, [$limit], 'i');
@@ -155,29 +171,36 @@ class ServiceModel extends BaseModel {
         $types = '';
         
         if ($categoryId !== null) {
-            $whereClause[] = "category = ?";
+            $whereClause[] = "s.category = ?";
             $params[] = $categoryId;
             $types .= 'i';
         }
         
         if ($userId !== null) {
-            $whereClause[] = "user_id = ?";
+            $whereClause[] = "s.user_id = ?";
             $params[] = $userId;
             $types .= 'i';
         }
         
         if ($search !== null) {
-            $whereClause[] = "(name LIKE ? OR description LIKE ?)";
+            $whereClause[] = "(s.name LIKE ? OR s.description LIKE ?)";
             $searchTerm = "%{$search}%";
             $params[] = $searchTerm;
             $params[] = $searchTerm;
             $types .= 'ss';
         }
         
-        $sql = "SELECT s.*, COALESCE(AVG(r.rating), 0) AS rating, u.username as seller_name 
+        // Modified query to use LEFT JOIN with a subquery for ratings
+        $sql = "SELECT s.*, u.username as seller_name, COALESCE(r.avg_rating, 0) AS rating
                 FROM {$this->table} s
-                LEFT JOIN reviews r ON s.id = r.service_id
-                JOIN users u ON s.user_id = u.id";
+                JOIN users u ON s.user_id = u.id
+                LEFT JOIN (
+                    SELECT service_id, AVG(rating) as avg_rating 
+                    FROM reviews 
+                    WHERE service_id IS NOT NULL 
+                    GROUP BY service_id
+                ) r ON s.id = r.service_id";
+                
         $countSql = "SELECT COUNT(*) as count FROM {$this->table} s";
         
         if (!empty($whereClause)) {

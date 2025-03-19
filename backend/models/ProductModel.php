@@ -70,11 +70,15 @@ class ProductModel extends BaseModel {
      * @return array Array of products
      */
     public function getByCategory($categoryId) {
-        $sql = "SELECT p.*, COALESCE(AVG(r.rating), 0) AS rating 
+        $sql = "SELECT p.*, COALESCE(r.avg_rating, 0) AS rating 
                 FROM {$this->table} p
-                LEFT JOIN reviews r ON p.id = r.product_id
-                WHERE p.category = ?
-                GROUP BY p.id";
+                LEFT JOIN (
+                    SELECT product_id, AVG(rating) as avg_rating 
+                    FROM reviews 
+                    WHERE product_id IS NOT NULL 
+                    GROUP BY product_id
+                ) r ON p.id = r.product_id
+                WHERE p.category = ?";
         return $this->select($sql, [$categoryId], 'i');
     }
 
@@ -86,11 +90,15 @@ class ProductModel extends BaseModel {
      */
     public function search($query) {
         $sql = "
-            SELECT p.*, COALESCE(AVG(r.rating), 0) AS rating 
+            SELECT p.*, COALESCE(r.avg_rating, 0) AS rating 
             FROM {$this->table} p
-            LEFT JOIN reviews r ON p.id = r.product_id
+            LEFT JOIN (
+                SELECT product_id, AVG(rating) as avg_rating 
+                FROM reviews 
+                WHERE product_id IS NOT NULL 
+                GROUP BY product_id
+            ) r ON p.id = r.product_id
             WHERE p.name LIKE ? OR p.description LIKE ?
-            GROUP BY p.id
         ";
         $searchTerm = "%{$query}%";
         return $this->select($sql, [$searchTerm, $searchTerm], 'ss');
@@ -104,10 +112,14 @@ class ProductModel extends BaseModel {
      */
     public function getFeatured($limit = 6) {
         $sql = "
-            SELECT p.*, COALESCE(AVG(r.rating), 0) AS rating 
+            SELECT p.*, COALESCE(r.avg_rating, 0) AS rating 
             FROM {$this->table} p
-            LEFT JOIN reviews r ON p.id = r.product_id
-            GROUP BY p.id
+            LEFT JOIN (
+                SELECT product_id, AVG(rating) as avg_rating 
+                FROM reviews 
+                WHERE product_id IS NOT NULL 
+                GROUP BY product_id
+            ) r ON p.id = r.product_id
             ORDER BY p.id DESC
             LIMIT ?
         ";
@@ -161,23 +173,30 @@ class ProductModel extends BaseModel {
         $types = '';
         
         if ($categoryId !== null) {
-            $whereClause[] = "category = ?";
+            $whereClause[] = "p.category = ?";
             $params[] = $categoryId;
             $types .= 'i';
         }
         
         if ($search !== null) {
-            $whereClause[] = "(name LIKE ? OR description LIKE ?)";
+            $whereClause[] = "(p.name LIKE ? OR p.description LIKE ?)";
             $searchTerm = "%{$search}%";
             $params[] = $searchTerm;
             $params[] = $searchTerm;
             $types .= 'ss';
         }
         
-        $sql = "SELECT p.*, COALESCE(AVG(r.rating), 0) AS rating 
+        // Modified query to use LEFT JOIN with a subquery for ratings
+        $sql = "SELECT p.*, COALESCE(r.avg_rating, 0) AS rating 
                 FROM {$this->table} p
-                LEFT JOIN reviews r ON p.id = r.product_id";
-        $countSql = "SELECT COUNT(*) as count FROM {$this->table}";
+                LEFT JOIN (
+                    SELECT product_id, AVG(rating) as avg_rating 
+                    FROM reviews 
+                    WHERE product_id IS NOT NULL 
+                    GROUP BY product_id
+                ) r ON p.id = r.product_id";
+        
+        $countSql = "SELECT COUNT(*) as count FROM {$this->table} p";
         
         if (!empty($whereClause)) {
             $whereString = implode(' AND ', $whereClause);
@@ -185,7 +204,7 @@ class ProductModel extends BaseModel {
             $countSql .= " WHERE {$whereString}";
         }
         
-        $sql .= " ORDER BY id DESC LIMIT ? OFFSET ?";
+        $sql .= " ORDER BY p.id DESC LIMIT ? OFFSET ?";
         $params[] = $perPage;
         $params[] = $offset;
         $types .= 'ii';

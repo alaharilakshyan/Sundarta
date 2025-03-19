@@ -206,4 +206,36 @@ This was a simple change, but it's important for the user experience. Now users 
 
 Note to self: Always think about the user experience from the beginning. It's easier to add features during the initial development than to retrofit them later.
 
+## The Great GROUP BY Disaster (March 19, 2025)
+
+Today I discovered why only ONE product/service was showing up in my paginated results. Turns out, I had a classic SQL GROUP BY situation on my hands. Who knew that GROUP BY could be so... groupy?
+
+The issue: I was using LEFT JOIN with GROUP BY in my SQL queries, but without proper aggregation handling. So when I tried to fetch all products or services, MySQL (being the strict enforcer it is) was like "Nope, I'm only giving you ONE record per group!"
+
+The solution? Refactored the SQL queries in ProductModel.php and ServiceModel.php to use subqueries instead. Basically:
+
+```sql
+/* Before - The Problematic One */
+SELECT p.*, AVG(r.rating) AS rating 
+FROM products p
+LEFT JOIN reviews r ON p.id = r.product_id
+GROUP BY p.id
+
+/* After - The Superstar */
+SELECT p.*, COALESCE(r.avg_rating, 0) AS rating 
+FROM products p
+LEFT JOIN (
+    SELECT product_id, AVG(rating) as avg_rating 
+    FROM reviews 
+    WHERE product_id IS NOT NULL 
+    GROUP BY product_id
+) r ON p.id = r.product_id
+```
+
+Spent an hour fixing this across all the query methods (getWithPagination, getByCategory, search, getFeatured...). The key insight was to pre-aggregate the ratings in a subquery FIRST, then join that result.
+
+Note to self: When using JOINs with GROUP BY, always be explicit about what you're aggregating and how. And maybe read the MySQL docs once in a while? Just a thought.
+
+The reward? All my products and services now show up beautifully paginated, WITH their correct average ratings. Who said database optimization isn't fun?
+
 
